@@ -60,7 +60,28 @@ def canonical(T, bases):
 
 def simplex_iteration(T, bases):
     while np.any(T[0, (T.shape[0] - 1):(T.shape[1] - 1)] < 0):
-        pass
+        improving_col = -1
+
+        for i in range(T.shape[0] - 1, T.shape[1] - 1):
+            if T[0][i] < 0:
+                improving_col = i
+                break
+
+        pivot_row = -1
+        min_val = np.finfo(np.float64).max
+
+        for i in range(1, T.shape[0]):
+            if T[i][improving_col] > 0 and T[i][-1:] / T[i][improving_col] < min_val:
+                min_val = T[i][-1:] / T[i][improving_col]
+                pivot_row = i
+
+        if pivot_row == -1:
+            print("ilimitado")
+            return T, bases
+
+        bases[pivot_row - 1] = (pivot_row, improving_col)
+
+        canonical(T, bases)
 
     return T, bases
 
@@ -76,8 +97,6 @@ def simplex(n, m, A, b, c):
         np.vstack((np.zeros(1), b))  # b
     ))
 
-    print(aux_T)
-
     rows = list(range(1, n+1))
     columns = list(range(n + m, n + m + n))
 
@@ -86,12 +105,22 @@ def simplex(n, m, A, b, c):
 
     aux_T = canonical(aux_T, bases)
 
-    print(aux_T)
-
     aux_T, bases = simplex_iteration(aux_T, bases)
 
-    print(aux_T)
-    print(bases)
+    if aux_T[0, -1:] < 0:
+        print("inviavel")
+    else:
+        T = aux_T.copy()
+
+        T = np.delete(T, list(range(n + m, n + m + n)), 1)
+        T[0, n:n+m] = -c
+
+        T, bases = simplex_iteration(T, bases)
+
+        print(T)
+        print(bases)
+
+        # otimo encontrado
 
 
 def main():
