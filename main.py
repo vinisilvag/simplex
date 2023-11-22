@@ -56,14 +56,16 @@ def standard_equality_form(n, m, A, b, c):
 
 
 def canonical(T, i, j):
+    vf = np.vectorize(zero)
+
     if zero(T[i, j]) != 0:
-        T[i, :] /= T[i, j]
+        T[i, :] = vf(T[i, :] / T[i, j])
 
     for k in range(T.shape[0]):
         if i == k:
             continue
 
-        T[k, :] -= (T[i, :] * T[k, j])
+        T[k, :] = vf(T[k, :] - (T[i, :] * T[k, j]))
 
 
 def simplex_iteration(T, bases):
@@ -123,8 +125,6 @@ def simplex(n, m, invert, A, b, c):
 
     _, _, aux_T, bases = simplex_iteration(aux_T, bases)
     optimal = aux_T[0, -1]
-
-    print(aux_T)
 
     if optimal < 0:
         return "inviavel", (), (aux_T[0, :n]), ()
