@@ -2,10 +2,17 @@ import numpy as np
 
 
 def zero(val):
-    if abs(val) <= 1e-4:
-        return 0
+    if abs(val) < 1e-4:
+        val = 0.0
 
     return val
+
+
+def print_array(arr):
+    for i in arr:
+        print("{:.7f}".format(i), end=' ')
+
+    print()
 
 
 def read_input():
@@ -45,21 +52,18 @@ def standard_equality_form(n, m, A, b, c):
     b = np.reshape(b, (n, 1))
     c = np.reshape(c, (1, m))
 
-    return n, m, A, b, c, invert
+    return n, m, invert, A, b, c
 
 
 def canonical(T, i, j):
-    n = T.shape[0] - 1
-
-    T[i, :] /= T[i, j]
+    if zero(T[i, j]) != 0:
+        T[i, :] /= T[i, j]
 
     for k in range(T.shape[0]):
         if i == k:
             continue
 
         T[k, :] -= (T[i, :] * T[k, j])
-
-    return T
 
 
 def simplex_iteration(T, bases):
@@ -86,18 +90,17 @@ def simplex_iteration(T, bases):
                 pivot_row = i
 
         if pivot_row == -1:
-            return True, T, bases
+            return True, improving_col, T, bases
 
         bases[pivot_row - 1] = (pivot_row, improving_col)
 
         canonical(T, pivot_row, improving_col)
 
-    return False, T, bases
+    return False, -1, T, bases
 
 
-def simplex(n, m, A, b, c, invert):
-    # VERO
-    aux_T = np.vstack((np.zeros(n), np.eye(n)))
+def simplex(n, m, invert, A, b, c):
+    aux_T = np.vstack((np.zeros(n), np.eye(n)))  # VERO
 
     aux_T = np.hstack((
         aux_T,
@@ -118,27 +121,54 @@ def simplex(n, m, A, b, c, invert):
     for i, j in bases:
         canonical(aux_T, i, j)
 
-    _, aux_T, bases = simplex_iteration(aux_T, bases)
+    _, _, aux_T, bases = simplex_iteration(aux_T, bases)
     optimal = aux_T[0, -1]
+
+    print(aux_T)
 
     if optimal < 0:
         return "inviavel", (), (aux_T[0, :n]), ()
     else:
-        T = aux_T.copy()
-        T = np.delete(T, list(range(n + m, n + m + n)), 1)
-        T[0, n:n+m] = -c
+        T = np.vstack((np.zeros(n), np.eye(n)))  # VERO
 
-        unbounded, T, bases = simplex_iteration(T, bases)
+        T = np.hstack((
+            T,
+            np.vstack((-c, A)),  # A
+            np.vstack((np.zeros(1), b))  # b
+        ))
+
+        for i in invert:
+            T[i, :n] = -T[i, :n]
+
+        for i, j in bases:
+            if j < n + m:
+                canonical(T, i, j)
+
+        unbounded, unbounded_col, T, bases = simplex_iteration(T, bases)
 
         if unbounded:
-            return "ilimitada", (), (), ()
+            x = np.zeros((m - n))
+
+            for row, col in bases:
+                if col - n >= 0 and col - n < (m - n):
+                    x[col - n] = T[row, -1]
+
+            certificate = np.zeros((m - n))
+
+            if unbounded_col - n >= 0 and unbounded_col - n < (m - n):
+                certificate[unbounded_col - n] = 1
+
+            for row, col in bases:
+                if col - n >= 0 and col - n < (m - n):
+                    certificate[col - n] = -T[row, unbounded_col]
+
+            return "ilimitada", (), (), (x, certificate)
         else:
             x = np.zeros((m - n))
 
-            for i in range(n):
-                index = bases[i][1] - n
-                if index >= 0 and index < m:
-                    x[index] = T[bases[i][0], -1]
+            for row, col in bases:
+                if col - n >= 0 and col - n < (m - n):
+                    x[col - n] = T[row, -1]
 
             return "otima", (T[0, -1], x, T[0, :n]), (), ()
 
@@ -146,10 +176,10 @@ def simplex(n, m, A, b, c, invert):
 def main():
     n, m, A, b, c = read_input()
 
-    n, m, A, b, c, invert = standard_equality_form(n, m, A, b, c)
+    n, m, invert, A, b, c = standard_equality_form(n, m, A, b, c)
 
     classification, optimum, infeasible, unbounded = simplex(
-        n, m, A, b, c, invert
+        n, m, invert, A, b, c
     )
 
     print(classification)
@@ -158,23 +188,17 @@ def main():
         optimal, x, certificate = optimum
 
         print("{:.7f}".format(optimal))
-
-        for i in x:
-            print("{:.7f}".format(i), end=' ')
-
-        print()
-
-        for i in certificate:
-            print("{:.7f}".format(i), end=' ')
+        print_array(x)
+        print_array(certificate)
     elif classification == "inviavel":
         certificate = infeasible
 
-        for i in certificate:
-            print("{:.7f}".format(i), end=' ')
+        print_array(certificate)
     else:
-        pass
+        x, certificate = unbounded
 
-    print()
+        print_array(x)
+        print_array(certificate)
 
 
 if __name__ == "__main__":
