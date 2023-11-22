@@ -59,13 +59,16 @@ def canonical(T, bases):
 
 
 def simplex_iteration(T, bases):
-    while np.any(T[0, (T.shape[0] - 1):(T.shape[1] - 1)] < 0):
+    while True:
         improving_col = -1
 
         for i in range(T.shape[0] - 1, T.shape[1] - 1):
             if T[0][i] < 0:
                 improving_col = i
                 break
+
+        if improving_col == -1:
+            break
 
         pivot_row = -1
         min_val = np.finfo(np.float64).max
@@ -76,14 +79,13 @@ def simplex_iteration(T, bases):
                 pivot_row = i
 
         if pivot_row == -1:
-            print("ilimitado")
-            return T, bases
+            return True, T, bases
 
         bases[pivot_row - 1] = (pivot_row, improving_col)
 
         canonical(T, bases)
 
-    return T, bases
+    return False, T, bases
 
 
 def simplex(n, m, A, b, c):
@@ -105,22 +107,28 @@ def simplex(n, m, A, b, c):
 
     aux_T = canonical(aux_T, bases)
 
-    aux_T, bases = simplex_iteration(aux_T, bases)
+    _, aux_T, bases = simplex_iteration(aux_T, bases)
 
     if aux_T[0, -1:] < 0:
-        print("inviavel")
+        return "inviavel", (), (-aux_T[0, 0:n]), ()
     else:
         T = aux_T.copy()
-
         T = np.delete(T, list(range(n + m, n + m + n)), 1)
         T[0, n:n+m] = -c
 
-        T, bases = simplex_iteration(T, bases)
+        unbounded, T, bases = simplex_iteration(T, bases)
 
-        print(T)
-        print(bases)
+        if unbounded:
+            return "ilimitada", (), (), ()
+        else:
+            x = np.zeros((m - n))
 
-        # otimo encontrado
+            for i in range(n):
+                index = bases[i][1] - n
+                if index >= 0 and index < m:
+                    x[index] = T[bases[i][0], -1:]
+
+            return "otima", (T[0, -1], x, T[0, 0:n]), (), ()
 
 
 def main():
@@ -128,7 +136,31 @@ def main():
 
     n, m, A, b, c = standard_equality_form(n, m, A, b, c)
 
-    simplex(n, m, A, b, c)
+    classification, optimum, infeasible, unbounded = simplex(n, m, A, b, c)
+
+    print(classification)
+
+    if classification == "otima":
+        optimal, x, certificate = optimum
+
+        print(optimal)
+
+        for i in x:
+            print(i, end=' ')
+
+        print()
+
+        for i in certificate:
+            print(i, end=' ')
+    elif classification == "inviavel":
+        certificate = infeasible
+
+        for i in certificate:
+            print(i, end=' ')
+    else:
+        pass
+
+    print()
 
 
 if __name__ == "__main__":
