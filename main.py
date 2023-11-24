@@ -1,4 +1,5 @@
 import numpy as np
+import sys
 
 
 def zero(val):
@@ -16,13 +17,16 @@ def print_array(arr):
 
 
 def read_input():
-    n, m = map(int, input().split())
+    instance = sys.argv[1]
+    file = open(instance, "r")
+
+    n, m = map(int, file.readline().split())
 
     A = []
-    c = np.array(list(map(int, input().split())))
+    c = np.array(list(map(int, file.readline().split())))
 
     for i in range(n):
-        A.append(list(map(int, input().split())))
+        A.append(list(map(int, file.readline().split())))
 
     A = np.array(A)
 
@@ -30,6 +34,8 @@ def read_input():
     A = A[:, :m]
 
     A, b, c = A.astype(float), b.astype(float), c.astype(float)
+
+    file.close()
 
     return n, m, A, b, c
 
@@ -43,9 +49,9 @@ def standard_equality_form(n, m, A, b, c):
 
     for i in range(n):
         if b[i] < 0:
-            invert.append(i + 1)
             b[i] = -b[i]
             A[i, :] = -A[i, :]
+            invert.append(i + 1)
 
     c = np.concatenate((c, np.zeros(n)))
 
@@ -140,8 +146,10 @@ def simplex(n, m, invert, A, b, c):
         for i in invert:
             T[i, :n] = -T[i, :n]
 
+        # negative B do different stuff
+
         for i, j in bases:
-            if j < n + m:
+            if j >= n and j < n + m:
                 canonical(T, i, j)
 
         unbounded, unbounded_col, T, bases = simplex_iteration(T, bases)
