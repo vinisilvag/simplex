@@ -25,8 +25,10 @@ def read_input():
     A = []
     c = np.array(list(map(int, file.readline().split())))
 
-    for i in range(n):
+    for _ in range(n):
         A.append(list(map(int, file.readline().split())))
+
+    file.close()
 
     A = np.array(A)
 
@@ -34,8 +36,6 @@ def read_input():
     A = A[:, :m]
 
     A, b, c = A.astype(float), b.astype(float), c.astype(float)
-
-    file.close()
 
     return n, m, A, b, c
 
@@ -146,7 +146,11 @@ def simplex(n, m, invert, A, b, c):
         for i in invert:
             T[i, :n] = -T[i, :n]
 
-        # negative B do different stuff
+        if len(invert) > 0:
+            temp = bases.tolist()
+            temp.sort(key=lambda x: x[1])
+
+            bases = np.array(temp, dtype="i,i")
 
         for i, j in bases:
             if j >= n and j < n + m:
